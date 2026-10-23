@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Metrônomo Digital com Playlist</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card: #161b22;
+      --card-alt: #1c212a;
+      --border: #30363d;
+      --accent: #238636;
+      --accent-hover: #2ea043;
+      --accent-active: #3fb950;
+      --accent-gold: #f59e0b;
+      --danger: #da3633;
+      --danger-hover: #b62324;
+      --text: #f0f6fc;
+      --text-muted: #8b949e;
+      --glow: rgba(46, 160, 67, 0.4);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 15%, #1c2533 0%, var(--bg) 85%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 30px 16px;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 960px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+
+    @media (min-width: 820px) {
+      .app-container {
+        grid-template-columns: 1.15fr 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px 24px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    }
+
+    h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* METRÔNOMO PRINCIPAL */
+    .metronome-section {
+      text-align: center;
+    }
+
+    .current-track-banner {
+      min-height: 28px;
+      margin-bottom: 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--accent-gold);
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      border-radius: 8px;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .bpm-display-box {
+      margin-bottom: 16px;
+    }
+
+    .bpm-val {
+      font-size: 4.8rem;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -3px;
+      color: #fff;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .bpm-sub {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    .tempo-pill {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--accent-active);
+      background: rgba(46, 160, 67, 0.15);
+      padding: 3px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(46, 160, 67, 0.3);
+    }
+
+    .beat-indicators {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin: 20px 0 16px;
+      min-height: 24px;
+      align-items: center;
+    }
+
+    .beat-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #21262d;
+      border: 1px solid var(--border);
+      transition: transform 0.08s ease, background 0.08s ease;
+    }
+
+    .beat-dot.active {
+      background: var(--accent-active);
+      box-shadow: 0 0 16px var(--glow);
+      transform: scale(1.35);
+    }
+
+    .beat-dot.accent-beat.active {
+      background: var(--accent-gold);
+      box-shadow: 0 0 18px rgba(245, 158, 11, 0.7);
+      transform: scale(1.45);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 8px;
+      border-radius: 4px;
+      background: #21262d;
+      accent-color: var(--accent-active);
+      outline: none;
+      cursor: pointer;
+      margin: 14px 0 18px;
+    }
+
+    .btn-row {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .btn-step {
+      background: #21262d;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 8px 13px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn-step:hover {
+      background: #30363d;
+    }
+
+    .config-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 22px;
+      text-align: left;
+    }
+
+    label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    select, input[type="text"], input[type="number"], textarea {
+      width: 100%;
+      background: #10141b;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    select:focus, input:focus, textarea:focus {
+      border-color: var(--accent);
+    }
+
+    .btn-tap {
+      background: #21262d;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.1s;
+    }
+
+    .btn-tap:active {
+      transform: scale(0.96);
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-main {
+      width: 100%;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 1.15rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 6px 20px var(--glow);
+      transition: all 0.2s;
+    }
+
+    .btn-main:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-main.running {
+      background: var(--danger);
+      box-shadow: 0 6px 20px rgba(218, 54, 51, 0.4);
+    }
+
+    .btn-main.running:hover {
+      background: var(--danger-hover);
+    }
+
+    .nav-track-btns {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .btn-nav-track {
+      flex: 1;
+      background: #21262d;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.15s;
+    }
+
+    .btn-nav-track:hover:not(:disabled) {
+      background: #30363d;
+    }
+
+    .btn-nav-track:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* PLAYLIST / SETLIST */
+    .playlist-section {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .add-track-form {
+      background: var(--card-alt);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .form-group {
+      margin-bottom: 10px;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 54px;
+      font-family: inherit;
+    }
+
+    .btn-add {
+      width: 100%;
+      background: #21262d;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-weight: 600;
+      font-size: 0.9rem;
+      padding: 11px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-add:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .playlist-items {
+      flex: 1;
+      overflow-y: auto;
+      max-height: 480px;
+      padding-right: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .playlist-items::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .playlist-items::-webkit-scrollbar-thumb {
+      background: #30363d;
+      border-radius: 3px;
+    }
+
+    .playlist-item {
+      background: var(--card-alt);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .playlist-item:hover {
+      border-color: #484f58;
+      background: #232936;
+    }
+
+    .playlist-item.active {
+      border-color: var(--accent-active);
+      background: rgba(35, 134, 54, 0.12);
+      box-shadow: 0 0 12px rgba(46, 160, 67, 0.2);
+    }
+
+    .item-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .item-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 3px;
+    }
+
+    .item-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .item-bpm-tag {
+      background: #10141b;
+      border: 1px solid var(--border);
+      color: var(--accent-active);
+      font-weight: 700;
+      font-size: 0.8rem;
+      padding: 2px 7px;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+
+    .item-meter-tag {
+      background: #10141b;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      padding: 2px 6px;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+
+    .item-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .item-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .btn-icon {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 6px 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.15s;
+    }
+
+    .btn-icon:hover {
+      background: #21262d;
+      border-color: var(--border);
+      color: #fff;
+    }
+
+    .btn-icon.delete:hover {
+      color: #ff7b72;
+      background: rgba(218, 54, 51, 0.15);
+      border-color: var(--danger);
+    }
+
+    .empty-playlist {
+      text-align: center;
+      padding: 36px 12px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .footer-help {
+      margin-top: 14px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- METRÔNOMO -->
+    <div class="card metronome-section">
+      <h2>
+        <span>Metrônomo</span>
+        <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">Espaço = Play/Stop</span>
+      </h2>
+
+      <!-- Banner da Música Ativa na Playlist -->
+      <div class="current-track-banner" id="currentTrackBanner" style="display: none;">
+        <span id="trackBannerTitle">Nome da Música</span>
+        <span id="trackBannerDesc" style="color: var(--text-muted); font-weight: normal; font-size: 0.8rem;"></span>
+      </div>
+
+      <!-- Display de BPM -->
+      <div class="bpm-display-box">
+        <div class="bpm-val" id="bpmDisplay">120</div>
+        <div class="bpm-sub">BPM</div>
+        <div class="tempo-pill" id="tempoTag">Moderato</div>
+      </div>
+
+      <!-- Indicador Visual dos Tempos -->
+      <div class="beat-indicators" id="beatIndicators"></div>
+
+      <!-- Slider de BPM -->
+      <input type="range" id="bpmSlider" min="30" max="280" value="120">
+
+      <!-- Botões de Incremento Fino -->
+      <div class="btn-row">
+        <button class="btn-step" onclick="changeBpm(-5)">-5</button>
+        <button class="btn-step" onclick="changeBpm(-1)">-1</button>
+        <button class="btn-step" onclick="changeBpm(+1)">+1</button>
+        <button class="btn-step" onclick="changeBpm(+5)">+5</button>
+      </div>
+
+      <!-- Compasso e Tap Tempo -->
+      <div class="config-grid">
+        <div>
+          <label for="timeSig">Compasso</label>
+          <select id="timeSig">
+            <option value="1">1 batida (Sem acento)</option>
+            <option value="2">2/4 (Binário)</option>
+            <option value="3">3/4 (Ternário)</option>
+            <option value="4" selected>4/4 (Quaternário)</option>
+            <option value="6">6/8 (Sexteto)</option>
+          </select>
+        </div>
+        <div>
+          <label>Tap Tempo</label>
+          <button type="button" class="btn-tap" id="btnTap">Bater Ritmo</button>
+        </div>
+      </div>
+
+      <!-- Botão Play / Parar -->
+      <button class="btn-main" id="btnToggle">
+        <span id="btnIcon">▶</span>
+        <span id="btnText">Iniciar</span>
+      </button>
+
+      <!-- Navegação Rápida de Músicas da Playlist -->
+      <div class="nav-track-btns">
+        <button class="btn-nav-track" id="btnPrevTrack" onclick="navigateTrack(-1)" disabled>
+          ◀ Faixa Anterior
+        </button>
+        <button class="btn-nav-track" id="btnNextTrack" onclick="navigateTrack(+1)" disabled>
+          Próxima Faixa ▶
+        </button>
+      </div>
+    </div>
+
+    <!-- PLAYLIST / SETLIST -->
+    <div class="card playlist-section">
+      <h2>
+        <span>Playlist / Repertório</span>
+        <span id="playlistCount" style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">0 músicas</span>
+      </h2>
+
+      <!-- Formulário de Adicionar Música -->
+      <form class="add-track-form" id="addTrackForm">
+        <div class="form-row">
+          <div>
+            <label for="trackTitle">Música / Título</label>
+            <input type="text" id="trackTitle" placeholder="Ex: Música 01" required>
+          </div>
+          <div>
+            <label for="trackBpm">BPM</label>
+            <input type="number" id="trackBpm" min="30" max="280" value="120" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div>
+            <label for="trackDesc">Descrição / Observações</label>
+            <input type="text" id="trackDesc" placeholder="Ex: Intro no chimbal, afinação Eb...">
+          </div>
+          <div>
+            <label for="trackMeter">Compasso</label>
+            <select id="trackMeter">
+              <option value="4" selected>4/4</option>
+              <option value="3">3/4</option>
+              <option value="2">2/4</option>
+              <option value="6">6/8</option>
+              <option value="1">1/1</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-add">➕ Adicionar à Playlist</button>
+      </form>
+
+      <!-- Lista de Músicas -->
+      <div class="playlist-items" id="playlistItems">
+        <!-- Renderizado dinamicamente via JS -->
+      </div>
+
+      <div class="footer-help">
+        * Sua playlist fica salva automaticamente no navegador (LocalStorage).
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- ESTADO DO METRÔNOMO ---
+    let bpm = 120;
+    let beatsPerBar = 4;
+    let currentBeat = 0;
+    let isRunning = false;
+
+    // Web Audio API
+    let audioCtx = null;
+    let lookahead = 25.0; // ms
+    let scheduleAheadTime = 0.1; // segundos
+    let nextNoteTime = 0.0;
+    let timerID = null;
+
+    // Elementos Metrônomo
+    const bpmDisplay = document.getElementById('bpmDisplay');
+    const tempoTag = document.getElementById('tempoTag');
+    const bpmSlider = document.getElementById('bpmSlider');
+    const timeSigSelect = document.getElementById('timeSig');
+    const beatIndicators = document.getElementById('beatIndicators');
+    const btnToggle = document.getElementById('btnToggle');
+    const btnIcon = document.getElementById('btnIcon');
+    const btnText = document.getElementById('btnText');
+    const btnTap = document.getElementById('btnTap');
+    const btnPrevTrack = document.getElementById('btnPrevTrack');
+    const btnNextTrack = document.getElementById('btnNextTrack');
+    const currentTrackBanner = document.getElementById('currentTrackBanner');
+    const trackBannerTitle = document.getElementById('trackBannerTitle');
+    const trackBannerDesc = document.getElementById('trackBannerDesc');
+
+    // Elementos Playlist
+    const addTrackForm = document.getElementById('addTrackForm');
+    const trackTitleInput = document.getElementById('trackTitle');
+    const trackBpmInput = document.getElementById('trackBpm');
+    const trackDescInput = document.getElementById('trackDesc');
+    const trackMeterSelect = document.getElementById('trackMeter');
+    const playlistItemsContainer = document.getElementById('playlistItems');
+    const playlistCountLabel = document.getElementById('playlistCount');
+
+    // Playlist e Faixa Ativa
+    let playlist = [];
+    let activeTrackIndex = -1;
+
+    // Nomes de andamento
+    function getTempoName(val) {
+      if (val < 40) return 'Grave';
+      if (val < 60) return 'Largo';
+      if (val < 66) return 'Larghetto';
+      if (val < 76) return 'Adagio';
+      if (val < 108) return 'Andante';
+      if (val < 120) return 'Moderato';
+      if (val < 168) return 'Allegro';
+      if (val < 200) return 'Presto';
+      return 'Prestissimo';
+    }
+
+    function setBpm(val) {
+      bpm = Math.min(Math.max(parseInt(val) || 120, 30), 280);
+      bpmDisplay.textContent = bpm;
+      bpmSlider.value = bpm;
+      tempoTag.textContent = getTempoName(bpm);
+      trackBpmInput.value = bpm;
+    }
+
+    function changeBpm(delta) {
+      setBpm(bpm + delta);
+    }
+
+    bpmSlider.addEventListener('input', (e) => setBpm(e.target.value));
+
+    function updateBeatDots() {
+      beatsPerBar = parseInt(timeSigSelect.value);
+      beatIndicators.innerHTML = '';
+      for (let i = 0; i < beatsPerBar; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'beat-dot' + (i === 0 && beatsPerBar > 1 ? ' accent-beat' : '');
+        beatIndicators.appendChild(dot);
+      }
+      currentBeat = 0;
+    }
+
+    timeSigSelect.addEventListener('change', updateBeatDots);
+    updateBeatDots();
+
+    // Síntese de Áudio com Web Audio API
+    function playClick(time, isFirstBeat) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(isFirstBeat && beatsPerBar > 1 ? 1400 : 800, time);
+
+      gain.gain.setValueAtTime(1, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start(time);
+      osc.stop(time + 0.045);
+    }
+
+    function scheduleNote(beatNumber, time) {
+      const isFirst = (beatNumber === 0);
+      playClick(time, isFirst);
+
+      const delay = Math.max(0, (time - audioCtx.currentTime) * 1000);
+      setTimeout(() => {
+        const dots = beatIndicators.children;
+        for (let i = 0; i < dots.length; i++) {
+          dots[i].classList.remove('active');
+        }
+        if (dots[beatNumber]) {
+          dots[beatNumber].classList.add('active');
+          setTimeout(() => {
+            if (dots[beatNumber]) dots[beatNumber].classList.remove('active');
+          }, 85);
+        }
+      }, delay);
+    }
+
+    function nextNote() {
+      const secondsPerBeat = 60.0 / bpm;
+      nextNoteTime += secondsPerBeat;
+      currentBeat = (currentBeat + 1) % beatsPerBar;
+    }
+
+    function scheduler() {
+      while (nextNoteTime < audioCtx.currentTime + scheduleAheadTime) {
+        scheduleNote(currentBeat, nextNoteTime);
+        nextNote();
+      }
+      timerID = setTimeout(scheduler, lookahead);
+    }
+
+    function startMetronome() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      isRunning = true;
+      currentBeat = 0;
+      nextNoteTime = audioCtx.currentTime + 0.05;
+      scheduler();
+      btnToggle.classList.add('running');
+      btnIcon.textContent = '⏹';
+      btnText.textContent = 'Parar';
+    }
+
+    function stopMetronome() {
+      isRunning = false;
+      clearTimeout(timerID);
+      btnToggle.classList.remove('running');
+      btnIcon.textContent = '▶';
+      btnText.textContent = 'Iniciar';
+      const dots = beatIndicators.children;
+      for (let i = 0; i < dots.length; i++) dots[i].classList.remove('active');
+    }
+
+    function toggleMetronome() {
+      if (isRunning) {
+        stopMetronome();
+      } else {
+        startMetronome();
+      }
+    }
+
+    btnToggle.addEventListener('click', toggleMetronome);
+
+    // Tap Tempo
+    let tapTimes = [];
+    let tapTimeout = null;
+
+    btnTap.addEventListener('click', () => {
+      const now = performance.now();
+      tapTimes.push(now);
+
+      if (tapTimes.length > 5) tapTimes.shift();
+
+      if (tapTimes.length > 1) {
+        const intervals = [];
+        for (let i = 1; i < tapTimes.length; i++) {
+          intervals.push(tapTimes[i] - tapTimes[i - 1]);
+        }
+        const avg = intervals.reduce((a, b) => a + b) / intervals.length;
+        const calculatedBpm = Math.round(60000 / avg);
+        if (calculatedBpm >= 30 && calculatedBpm <= 280) {
+          setBpm(calculatedBpm);
+        }
+      }
+
+      clearTimeout(tapTimeout);
+      tapTimeout = setTimeout(() => { tapTimes = []; }, 2000);
+    });
+
+    // Tecla Espaço
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT' && e.target.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        toggleMetronome();
+      }
+    });
+
+    // --- GERENCIAMENTO DA PLAYLIST ---
+    const STORAGE_KEY = 'metronome_playlist_v2';
+
+    function loadPlaylistFromStorage() {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          playlist = JSON.parse(stored);
+        } else {
+          // Exemplos iniciais padrão
+          playlist = [
+            { id: 1, title: 'Treino de Escalas', bpm: 90, desc: 'Palhetada alternada em semicolcheias', meter: '4' },
+            { id: 2, title: 'Blink-182 - All The Small Things', bpm: 148, desc: 'Pop Punk clássico 4/4', meter: '4' },
+            { id: 3, title: 'Balada Romântica', bpm: 72, desc: 'Compasso 3/4 lento com dinâmica suave', meter: '3' }
+          ];
+          savePlaylistToStorage();
+        }
+      } catch (err) {
+        playlist = [];
+      }
+      renderPlaylist();
+    }
+
+    function savePlaylistToStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(playlist));
+      } catch (e) {
+        console.error('Erro ao salvar playlist', e);
+      }
+    }
+
+    function renderPlaylist() {
+      playlistItemsContainer.innerHTML = '';
+      playlistCountLabel.textContent = `${playlist.length} ${playlist.length === 1 ? 'música' : 'músicas'}`;
+
+      if (playlist.length === 0) {
+        playlistItemsContainer.innerHTML = `
+          <div class="empty-playlist">
+            Nenhuma música cadastrada ainda.<br>Preencha os campos acima para adicionar!
+          </div>
+        `;
+        activeTrackIndex = -1;
+        updateTrackBanner();
+        updateNavButtons();
+        return;
+      }
+
+      playlist.forEach((track, index) => {
+        const item = document.createElement('div');
+        item.className = 'playlist-item' + (index === activeTrackIndex ? ' active' : '');
+        item.onclick = (e) => {
+          if (!e.target.closest('.btn-icon')) {
+            selectTrack(index, true);
+          }
+        };
+
+        const meterDisplay = track.meter === '1' ? '1/1' : (track.meter === '6' ? '6/8' : `${track.meter}/4`);
+
+        item.innerHTML = `
+          <div class="item-info">
+            <div class="item-title-row">
+              <span class="item-name" title="${track.title}">${track.title}</span>
+              <span class="item-bpm-tag">${track.bpm} BPM</span>
+              <span class="item-meter-tag">${meterDisplay}</span>
+            </div>
+            <div class="item-desc">${track.desc ? track.desc : 'Sem descrição'}</div>
+          </div>
+          <div class="item-actions">
+            <button class="btn-icon" title="Carregar no metrônomo" onclick="selectTrack(${index}, false)">▶</button>
+            <button class="btn-icon delete" title="Remover música" onclick="removeTrack(${index}, event)">🗑️</button>
+          </div>
+        `;
+
+        playlistItemsContainer.appendChild(item);
+      });
+
+      updateTrackBanner();
+      updateNavButtons();
+    }
+
+    function selectTrack(index, autoPlay = false) {
+      if (index < 0 || index >= playlist.length) return;
+
+      activeTrackIndex = index;
+      const track = playlist[index];
+
+      setBpm(track.bpm);
+      if (track.meter) {
+        timeSigSelect.value = track.meter;
+        updateBeatDots();
+      }
+
+      renderPlaylist();
+
+      if (autoPlay && !isRunning) {
+        startMetronome();
+      }
+    }
+
+    function removeTrack(index, event) {
+      event.stopPropagation();
+      if (confirm(`Remover "${playlist[index].title}" da playlist?`)) {
+        playlist.splice(index, 1);
+        if (activeTrackIndex === index) {
+          activeTrackIndex = -1;
+        } else if (activeTrackIndex > index) {
+          activeTrackIndex--;
+        }
+        savePlaylistToStorage();
+        renderPlaylist();
+      }
+    }
+
+    function updateTrackBanner() {
+      if (activeTrackIndex >= 0 && playlist[activeTrackIndex]) {
+        const track = playlist[activeTrackIndex];
+        currentTrackBanner.style.display = 'flex';
+        trackBannerTitle.textContent = `🎵 ${track.title} (${track.bpm} BPM)`;
+        trackBannerDesc.textContent = track.desc ? `— ${track.desc}` : '';
+      } else {
+        currentTrackBanner.style.display = 'none';
+      }
+    }
+
+    function updateNavButtons() {
+      btnPrevTrack.disabled = (activeTrackIndex <= 0);
+      btnNextTrack.disabled = (activeTrackIndex < 0 || activeTrackIndex >= playlist.length - 1);
+    }
+
+    function navigateTrack(delta) {
+      const newIndex = activeTrackIndex + delta;
+      if (newIndex >= 0 && newIndex < playlist.length) {
+        selectTrack(newIndex, isRunning);
+      }
+    }
+
+    // Formulário de Adicionar Música
+    addTrackForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const title = trackTitleInput.value.trim();
+      const trackBpm = parseInt(trackBpmInput.value) || bpm;
+      const desc = trackDescInput.value.trim();
+      const meter = trackMeterSelect.value;
+
+      if (!title) return;
+
+      const newTrack = {
+        id: Date.now(),
+        title,
+        bpm: trackBpm,
+        desc,
+        meter
+      };
+
+      playlist.push(newTrack);
+      savePlaylistToStorage();
+      renderPlaylist();
+
+      // Limpa formulário
+      trackTitleInput.value = '';
+      trackDescInput.value = '';
+      trackTitleInput.focus();
+    });
+
+    // Sincroniza o BPM do formulário ao alterar o metrônomo
+    bpmSlider.addEventListener('change', () => {
+      trackBpmInput.value = bpm;
+    });
+
+    // Inicia a aplicação
+    loadPlaylistFromStorage();
+  </script>
+</body>
+</html>
